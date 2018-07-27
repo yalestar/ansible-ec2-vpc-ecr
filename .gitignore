@@ -1,0 +1,10 @@
+.boto
+*.pyc
+*.retry
+/ansible/known_hosts.old
+/ansible/known_hosts
+/ansible/known_hosts*
+/ansible/rds_*.txt
+.DS_Store
+.idea/
+.vscode/
