@@ -1,0 +1,47 @@
+AWS_PROFILE=yalestar aws ec2 create-vpc --cidr-block 10.0.0.0/16
+AWS_PROFILE=yalestar aws ec2 create-subnet --vpc-id vpc-c67b8bbe --cidr-block 10.0.1.0/24
+AWS_PROFILE=yalestar aws ec2 create-subnet --vpc-id vpc-c67b8bbe --cidr-block 10.0.0.0/24
+aws ec2 create-internet-gateway
+
+AWS_PROFILE=yalestar aws ec2 attach-internet-gateway --vpc-id vpc-c67b8bbe --internet-gateway-id igw-7d6a4a1b
+
+Create custom Route Table for VPC:
+AWS_PROFILE=yalestar aws ec2 create-route-table --vpc-id vpc-c67b8bbe
+
+Create a route in route table that points all traffic to the IG:
+AWS_PROFILE=yalestar aws ec2 create-route --route-table-id rtb-e18c5c9a --destination-cidr-block 0.0.0.0/0 --gateway-id igw-7d6a4a1b
+
+Confirm and describe the route table:
+AWS_PROFILE=yalestar aws ec2 describe-route-tables --route-table-id rtb-e18c5c9a
+
+Associate the route table with a subnet so that traffic from that subnet is routed to the IG:
+
+First describe the subnets to get IDS:
+AWS_PROFILE=yalestar aws ec2 describe-subnets --filters "Name=vpc-id,Values=vpc-c67b8bbe" --query 'Subnets[*].{ID:SubnetId,CIDR:CidrBlock}'
+
+The subnet that is associated with the route table is the one we want to be public:
+AWS_PROFILE=yalestar aws ec2 associate-route-table --subnet-id subnet-3c95cc66 --route-table-id rtb-e18c5c9a
+
+Optionally we can modify the public IP addressing behavior of your subnet so that an instance launched into the subnet automatically receives a public IP address. (Otherwise, you should associate an Elastic IP address with your instance after launch so that it's reachable from the Internet):
+
+Create and configure security groups:
+AWS_PROFILE=yalestar aws ec2 create-security-group --group-name SSHAccess --description "SG for SSH" --vpc-id vpc-c67b8bbe
+
+Set ingress rule for SSH on port 22:
+AWS_PROFILE=yalestar aws ec2 authorize-security-group-ingress --group-id sg-08029878 --protocol tcp --port 22 --cidr 0.0.0.0/0
+
+Launch EC2 instance into public subnet:
+AWS_PROFILE=yalestar aws ec2 run-instances --image-id ami-a9d09ed1 --count 1 --instance-type t2.micro --key-name dingus --security-group-ids sg-8b2870fb --subnet-id subnet-3c95cc66
+
+
+AWS_PROFILE=yalestar aws ec2 terminate-instances --instance-ids i-0ce2272314c5f4ea9
+AWS_PROFILE=yalestar aws ec2 delete-security-group --group-id sg-a82d75d8
+AWS_PROFILE=yalestar aws ec2 delete-subnet --subnet-id subnet-3c95cc66
+AWS_PROFILE=yalestar aws ec2 delete-subnet --subnet-id subnet-589bc202
+AWS_PROFILE=yalestar aws ec2 delete-route-table --route-table-id rtb-e18c5c9a
+AWS_PROFILE=yalestar aws ec2 detach-internet-gateway --internet-gateway-id igw-7d6a4a1b --vpc-id vpc-4904f431
+AWS_PROFILE=yalestar aws ec2 delete-internet-gateway --internet-gateway-id igw-7d6a4a1b
+AWS_PROFILE=yalestar aws ec2 delete-vpc --vpc-id vpc-4904f431
+AWS_PROFILE=yalestar aws ec2 describe-addresses  
+AWS_PROFILE=yalestar aws ec2 disassociate-address
+AWS_PROFILE=yalestar aws ec2 release-address

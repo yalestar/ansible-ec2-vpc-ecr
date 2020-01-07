@@ -1,0 +1,76 @@
+- hosts: localhost
+  connection: local
+  gather_facts: no
+  vars:
+    region: us-west-2
+    name: dingus_vpc
+    prefix: dingus
+  tasks:
+
+    # - name: Terminate EC2 instances
+    #   ec2:
+    #     region: "{{ region }}"  
+    #     wait: yes  
+    #     instance_ids: ['i-9e1e18a1', 'i-f61b1dc9', 'i-36272109', 'i-0b272134', 'i-0a272135']  
+    #     state: absent  
+
+    # - name: Remove ELB
+    #   ec2_elb_lb:
+    #     name: "{{ elb_name }}"
+    #     state: absent
+
+
+    - name: Get VPC ID
+      command: "aws ec2 describe-vpcs --filters Name=tag:Name,Values={{ name }}
+               --query 'Vpcs[0].VpcId' --output text"
+      register: vpc_id
+
+    - debug: var=vpc_id.stdout
+
+    - name: Fetch security groups for VPC
+      local_action: shell aws ec2 describe-security-groups --filters Name=vpc-id,Values="{{ vpc_id }}" | jq --raw-output '[.[][].GroupId]'
+      register: vpc_security_groups
+
+    - name: Fetch security group names for VPC
+      local_action: shell aws ec2 describe-security-groups --filters Name=vpc-id,Values="{{ vpc_id }}" | jq --raw-output '[.[][].GroupName]'
+      register: vpc_security_group_names
+
+    - debug: var=vpc_security_group_names.stdout
+
+    - name: Empty rules in security groups for VPC
+      ec2_group:
+        name: "{{ item }}"
+        description: "ready for deletion"
+        region: "{{ aws_region }}"
+        vpc_id: "{{ vpc_id }}"
+        purge_rules: true
+        purge_rules_egress: true
+        state: present
+        rules: []
+        rules_egress: []
+      with_items: "{{ vpc_security_group_names.stdout | from_json }}"
+
+    # - name: Delete security groups for VPC
+    #   local_action: shell aws ec2 delete-security-group --group-id "{{ item }}"
+    #   with_items: "{{ vpc_security_groups.stdout | from_json }}"
+    #   ignore_errors: yes
+
+    # - name: Fetch all subnets for VPC
+    #   local_action: shell aws ec2 describe-subnets --filter Name=vpc-id,Values="{{ vpc_id.stdout }}" | jq --raw-output '[.[][].SubnetId]'
+    #   register: vpc_subnets
+
+    # - debug: var=vpc_subnets.stdout
+
+    # - name: Delete all VPC subnets
+    #   local_action: shell aws ec2 delete-subnet --subnet-id "{{ item }}"
+    #   with_items: "{{ vpc_subnets.stdout | from_json }}"
+    #   ignore_errors: yes
+
+    # - name: Delete VPC
+    #   local_action:
+    #     module: ec2_vpc
+    #     region: "{{ region }}"
+    #     resource_tags: { "Name":"dingus_vpc"}
+    #     state: absent
+    #     vpc_id: "{{ vpc_id.stdout }}"
+    #     wait: yes

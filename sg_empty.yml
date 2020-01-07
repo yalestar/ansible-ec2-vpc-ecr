@@ -1,0 +1,18 @@
+---  
+- hosts: localhost  
+  connection: local  
+  gather_facts: no    
+  vars_files:
+    - dingus_vpc_info
+  vars:  
+    region: us-west-2
+    prefix: dingus
+    vpc_id: "{{ dingus_vpc }}"
+  tasks:  
+    - name: create empty security group for webservers 
+      local_action:  
+        module: ec2_group    
+        region: "{{ region }}"
+        vpc_id: "{{ vpc_id }}"
+        name: "{{ prefix }}_sg_web"    
+        description: security group for webservers

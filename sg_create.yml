@@ -1,0 +1,52 @@
+---  
+- hosts: localhost  
+  connection: local  
+  gather_facts: no    
+  vars_files:
+    - dingus_vpc_info
+  vars:  
+    region: us-west-2 
+    allowed_ip: 0.0.0.0/0 
+    prefix: dingus
+    vpc_id: "{{ dingus_vpc }}"
+    private_subnet: 10.0.1.0/24
+
+  tasks:  
+    - name: Create empty SG
+      local_action:  
+        module: ec2_group    
+        region: "{{ region }}"
+        vpc_id: "{{ vpc_id }}"
+        name: "{{ prefix }}_sg_web"    
+        description: SG 
+
+  tasks:  
+    - name: Modify SG rules
+      ec2_group:
+        region: "{{ region }}"
+        vpc_id: "{{ vpc_id }}"
+        name: "{{ prefix }}_sg_web"    
+        description: SG for webserver
+        rules:
+          - proto: tcp  
+            from_port: 22  
+            to_port: 22  
+            cidr_ip: "{{ allowed_ip }}"  
+          - proto: tcp  
+            from_port: 80    
+            to_port: 80    
+            cidr_ip: 0.0.0.0/0    
+          - proto: tcp  
+            from_port: 443    
+            to_port: 443    
+            cidr_ip: 0.0.0.0/0
+        rules_egress:  
+          - proto: tcp
+            from_port: 80
+            to_port: 80
+            cidr_ip: 0.0.0.0/0
+          - proto: tcp
+            from_port: 443
+            to_port: 443
+            cidr_ip: 0.0.0.0/0
+
